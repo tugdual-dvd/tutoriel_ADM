@@ -76,6 +76,6 @@ apply(df[, 2:3], 2, mean)
 exo 3 
 ```{r}
 data("iris")
-
+2+5
 ```
 
