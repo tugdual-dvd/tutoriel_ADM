@@ -6,11 +6,11 @@ output: github_document
 library(dada2)
 ```
 
-```{r}
+```{r, cache=TRUE}
 path <- "~/tutoriel_ADM/MiSeq_SOP" # CHANGE ME to the directory containing the fastq files after unzipping.
 list.files(path)
 ```
-```{r}
+```{r, cache=TRUE}
 # Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
 fnFs <- sort(list.files(path, pattern="_R1_001.fastq", full.names = TRUE))
 fnRs <- sort(list.files(path, pattern="_R2_001.fastq", full.names = TRUE))
@@ -19,7 +19,7 @@ sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
 ```
 
 
-```{r}
+```{r, cache=TRUE}
 # Place filtered files in filtered/ subdirectory
 filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
 filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
@@ -27,60 +27,60 @@ names(filtFs) <- sample.names
 names(filtRs) <- sample.names
 ```
 
-```{r}
+```{r, cache=TRUE}
 out <- dada2::filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(240,160),
               maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
               compress=TRUE, multithread=FALSE) # On Windows set multithread=FALSE
 head(out)
 ```
-```{r}
+```{r, cache=TRUE}
 errF <- dada2::learnErrors(filtFs, multithread=TRUE)
 ```
-```{r}
+```{r, cache=TRUE}
 errR <- dada2::learnErrors(filtRs, multithread=TRUE)
 ```
-```{r}
+```{r, cache=TRUE}
 dada2::plotErrors(errF, nominalQ=TRUE)
 ```
 
-```{r}
+```{r, cache=TRUE}
 dadaFs <- dada2::dada(filtFs, err=errF, multithread=TRUE)
 ```
 
-```{r}
+```{r, cache=TRUE}
 dadaRs <- dada2::dada(filtRs, err=errR, multithread=TRUE)
 ```
 
-```{r}
+```{r, cache=TRUE}
 dadaFs[[1]]
 ```
 
-```{r}
+```{r, cache=TRUE}
 mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs, verbose=TRUE)
 # Inspect the merger data.frame from the first sample
 head(mergers[[1]])
 ```
 
-```{r}
+```{r, cache=TRUE}
 seqtab <- makeSequenceTable(mergers)
 dim(seqtab)
 ```
 
-```{r}
+```{r, cache=TRUE}
 # Inspect distribution of sequence lengths
 table(nchar(getSequences(seqtab)))
 ```
 
-```{r}
+```{r, cache=TRUE}
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 dim(seqtab.nochim)
 ```
 
-```{r}
+```{r, cache=TRUE}
 sum(seqtab.nochim)/sum(seqtab)
 ```
 
-```{r}
+```{r, cache=TRUE}
 getN <- function(x) sum(getUniques(x))
 track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
 # If processing a single sample, remove the sapply calls: e.g. replace sapply(dadaFs, getN) with getN(dadaFs)
