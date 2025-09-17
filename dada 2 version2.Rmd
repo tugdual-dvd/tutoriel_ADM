@@ -30,4 +30,13 @@ out <- dada2::filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(240,160),
               compress=TRUE, multithread=FALSE) # On Windows set multithread=FALSE
 head(out)
 ```
+```{r}
+errF <- dada2::learnErrors(filtFs, multithread=TRUE)
+```
+```{r}
+errR <- dada2::learnErrors(filtRs, multithread=TRUE)
+```
+```{r}
+dada2::plotErrors(errF, nominalQ=TRUE)
+```
 
