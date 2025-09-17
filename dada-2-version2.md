@@ -25,10 +25,10 @@ list.files(path)
     ## [33] "F3D7_S195_L001_R1_001.fastq"   "F3D7_S195_L001_R2_001.fastq"  
     ## [35] "F3D8_S196_L001_R1_001.fastq"   "F3D8_S196_L001_R2_001.fastq"  
     ## [37] "F3D9_S197_L001_R1_001.fastq"   "F3D9_S197_L001_R2_001.fastq"  
-    ## [39] "HMP_MOCK.v35.fasta"            "Mock_S280_L001_R1_001.fastq"  
-    ## [41] "Mock_S280_L001_R2_001.fastq"   "mouse.dpw.metadata"           
-    ## [43] "mouse.time.design"             "stability.batch"              
-    ## [45] "stability.files"
+    ## [39] "filtered"                      "HMP_MOCK.v35.fasta"           
+    ## [41] "Mock_S280_L001_R1_001.fastq"   "Mock_S280_L001_R2_001.fastq"  
+    ## [43] "mouse.dpw.metadata"            "mouse.time.design"            
+    ## [45] "stability.batch"               "stability.files"
 
 ``` r
 # Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
@@ -38,4 +38,25 @@ fnRs <- sort(list.files(path, pattern="_R2_001.fastq", full.names = TRUE))
 sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
 ```
 
-test
+``` r
+# Place filtered files in filtered/ subdirectory
+filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
+names(filtFs) <- sample.names
+names(filtRs) <- sample.names
+```
+
+``` r
+out <- dada2::filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(240,160),
+              maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
+              compress=TRUE, multithread=FALSE) # On Windows set multithread=FALSE
+head(out)
+```
+
+    ##                               reads.in reads.out
+    ## F3D0_S188_L001_R1_001.fastq       7793      7113
+    ## F3D1_S189_L001_R1_001.fastq       5869      5299
+    ## F3D141_S207_L001_R1_001.fastq     5958      5463
+    ## F3D142_S208_L001_R1_001.fastq     3183      2914
+    ## F3D143_S209_L001_R1_001.fastq     3178      2941
+    ## F3D144_S210_L001_R1_001.fastq     4827      4312
