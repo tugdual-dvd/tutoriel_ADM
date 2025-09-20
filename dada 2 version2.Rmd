@@ -6,7 +6,7 @@ output: github_document
 library(dada2)
 ```
 
-```{r, cache=TRUE}
+```{r}
 path <- "~/tutoriel_ADM/MiSeq_SOP" # CHANGE ME to the directory containing the fastq files after unzipping.
 list.files(path)
 ```
@@ -87,5 +87,14 @@ track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, 
 colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
 rownames(track) <- sample.names
 head(track)
+```
+```{r, cache=TRUE}
+seqtab.filt <- seqtab.nochim[, colSums(seqtab.nochim) > 1]
+
+```
+
+
+```{r, cache=TRUE}
+taxa <- assignTaxonomy(seqtab.nochim, "~/tutoriel_ADM/silva_nr99_v138.2_toGenus_trainset.fa.gz?download=1", multithread=3)
 ```
 
