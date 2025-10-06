@@ -45,6 +45,18 @@ sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
 ```
 
 ``` r
+plotQualityProfile(fnFs[1:2])
+```
+
+![](dada-2-version2_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+
+``` r
+plotQualityProfile(fnRs[1:2])
+```
+
+![](dada-2-version2_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+
+``` r
 # Place filtered files in filtered/ subdirectory
 filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
 filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
@@ -86,7 +98,7 @@ dada2::plotErrors(errF, nominalQ=TRUE)
     ## Warning: Transformation introduced infinite values in continuous y-axis
     ## Transformation introduced infinite values in continuous y-axis
 
-![](dada-2-version2_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+![](dada-2-version2_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
 ``` r
 dadaFs <- dada2::dada(filtFs, err=errF, multithread=TRUE)
@@ -260,3 +272,48 @@ head(track)
     ## F3D142  3183     2914      2799      2830   2595    2521
     ## F3D143  3178     2941      2822      2868   2553    2519
     ## F3D144  4827     4312      4151      4228   3646    3507
+
+``` r
+seqtab.filt <- seqtab.nochim[, colSums(seqtab.nochim) > 1]
+```
+
+``` r
+taxa <- assignTaxonomy(seqtab.nochim, "~/tutoriel_ADM/silva_nr99_v138.2_toGenus_trainset.fa.gz?download=1", multithread=3)
+```
+
+``` r
+taxa.print <- taxa # Removing sequence rownames for display only
+rownames(taxa.print) <- NULL
+head(taxa.print)
+```
+
+    ##      Kingdom    Phylum         Class         Order           Family          
+    ## [1,] "Bacteria" "Bacteroidota" "Bacteroidia" "Bacteroidales" "Muribaculaceae"
+    ## [2,] "Bacteria" "Bacteroidota" "Bacteroidia" "Bacteroidales" "Muribaculaceae"
+    ## [3,] "Bacteria" "Bacteroidota" "Bacteroidia" "Bacteroidales" "Muribaculaceae"
+    ## [4,] "Bacteria" "Bacteroidota" "Bacteroidia" "Bacteroidales" "Muribaculaceae"
+    ## [5,] "Bacteria" "Bacteroidota" "Bacteroidia" "Bacteroidales" "Bacteroidaceae"
+    ## [6,] "Bacteria" "Bacteroidota" "Bacteroidia" "Bacteroidales" "Muribaculaceae"
+    ##      Genus        
+    ## [1,] NA           
+    ## [2,] NA           
+    ## [3,] NA           
+    ## [4,] NA           
+    ## [5,] "Bacteroides"
+    ## [6,] NA
+
+``` r
+unqs.mock <- seqtab.nochim["Mock",]
+unqs.mock <- sort(unqs.mock[unqs.mock>0], decreasing=TRUE) # Drop ASVs absent in the Mock
+cat("DADA2 inferred", length(unqs.mock), "sample sequences present in the Mock community.\n")
+```
+
+    ## DADA2 inferred 20 sample sequences present in the Mock community.
+
+``` r
+mock.ref <- getSequences(file.path(path, "HMP_MOCK.v35.fasta"))
+match.ref <- sum(sapply(names(unqs.mock), function(x) any(grepl(x, mock.ref))))
+cat("Of those,", sum(match.ref), "were exact matches to the expected reference sequences.\n")
+```
+
+    ## Of those, 20 were exact matches to the expected reference sequences.
