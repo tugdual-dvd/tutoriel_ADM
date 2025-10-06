@@ -1,15 +1,19 @@
 R Notebook
 ================
 
+## **Activation de la librairie DADA2**
+
 ``` r
 library(dada2)
 ```
 
     ## Loading required package: Rcpp
 
+## **Définition du chemin et exploration des fichiers**
+
 ``` r
-path <- "~/tutoriel_ADM/MiSeq_SOP" # définition du chemin 
-list.files(path) # exploration des fichiers
+path <- "~/tutoriel_ADM/MiSeq_SOP" # CHANGE ME to the directory containing the fastq files after unzipping.
+list.files(path)
 ```
 
     ##  [1] "F3D0_S188_L001_R1_001.fastq"   "F3D0_S188_L001_R2_001.fastq"  
@@ -36,28 +40,34 @@ list.files(path) # exploration des fichiers
     ## [43] "mouse.dpw.metadata"            "mouse.time.design"            
     ## [45] "stability.batch"               "stability.files"
 
-``` r
+## **Organisation des fichiers forward et reverse**
 
+``` r
+# Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
 fnFs <- sort(list.files(path, pattern="_R1_001.fastq", full.names = TRUE))
 fnRs <- sort(list.files(path, pattern="_R2_001.fastq", full.names = TRUE))
-# création de deux listes: fnFs vers les fichiers forward et fnRs vers les fichiers reverse
-sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1) #extraction des noms d'échantillon à partir des noms des fichiers
+# Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
+sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
 ```
 
+## **Vérification de la qualité des lectures**
+
 ``` r
-plotQualityProfile(fnFs[1:2]) #vérification de la qualité des lectures
+plotQualityProfile(fnFs[1:2])
 ```
 
 ![](dada-2-version2_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
-le graphique montre la qualité (score Q) de chaque position du read 
-les lectures ont une bonne qualité jusqu'a environ 240pb
+
 ``` r
 plotQualityProfile(fnRs[1:2])
 ```
 
 ![](dada-2-version2_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
-les lectures ont une bonne qualité jusqu'a enciron 160pb
+
+## **Filtrage et tronquage des séquences**
+
 ``` r
+# Place filtered files in filtered/ subdirectory
 filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
 filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
 names(filtFs) <- sample.names
@@ -65,9 +75,8 @@ names(filtRs) <- sample.names
 ```
 
 ``` r
-#nettoyage des lectures brut, tronquage des reads
-out <- dada2::filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(240,160), #tronque à 240 et 160pb
-              maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE, #rejette les seq avec des bases N, et garde les lectures avec une nb d'erreur attendues <2, compresse les fichiers de sortie
+out <- dada2::filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(240,160),
+              maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
               compress=TRUE, multithread=FALSE) # On Windows set multithread=FALSE
 head(out)
 ```
@@ -79,21 +88,23 @@ head(out)
     ## F3D142_S208_L001_R1_001.fastq     3183      2914
     ## F3D143_S209_L001_R1_001.fastq     3178      2941
     ## F3D144_S210_L001_R1_001.fastq     4827      4312
-environ 85% des lectures sont conservées
+
+## **Apprentissage des modèles d’erreurs**
+
 ``` r
-errF <- dada2::learnErrors(filtFs, multithread=TRUE) #apprentissage du modèle d'erreur, construction d'un modèle probabiliste, pour distinguer les erreurs aléatoires des vraies différences
+errF <- dada2::learnErrors(filtFs, multithread=TRUE)
 ```
 
     ## 33514080 total bases in 139642 reads from 20 samples will be used for learning the error rates.
 
 ``` r
-errR <- dada2::learnErrors(filtRs, multithread=TRUE) #apprentissage du modèle d'erreur
+errR <- dada2::learnErrors(filtRs, multithread=TRUE)
 ```
 
     ## 22342720 total bases in 139642 reads from 20 samples will be used for learning the error rates.
 
 ``` r
-dada2::plotErrors(errF, nominalQ=TRUE) # montre la correspondance entre erreurs observées et attendues
+dada2::plotErrors(errF, nominalQ=TRUE)
 ```
 
     ## Warning: Transformation introduced infinite values in continuous y-axis
@@ -101,8 +112,10 @@ dada2::plotErrors(errF, nominalQ=TRUE) # montre la correspondance entre erreurs 
 
 ![](dada-2-version2_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
+## **Identification des variantes exactes**
+
 ``` r
-dadaFs <- dada2::dada(filtFs, err=errF, multithread=TRUE) #dépistage des variantes d'ASV
+dadaFs <- dada2::dada(filtFs, err=errF, multithread=TRUE)
 ```
 
     ## Sample 1 - 7113 reads in 1979 unique sequences.
@@ -127,7 +140,7 @@ dadaFs <- dada2::dada(filtFs, err=errF, multithread=TRUE) #dépistage des varian
     ## Sample 20 - 4314 reads in 897 unique sequences.
 
 ``` r
-dadaRs <- dada2::dada(filtRs, err=errR, multithread=TRUE) #dépistage des variantes d'ASV
+dadaRs <- dada2::dada(filtRs, err=errR, multithread=TRUE)
 ```
 
     ## Sample 1 - 7113 reads in 1660 unique sequences.
@@ -159,8 +172,10 @@ dadaFs[[1]]
     ## 128 sequence variants were inferred from 1979 input unique sequences.
     ## Key parameters: OMEGA_A = 1e-40, OMEGA_C = 1e-40, BAND_SIZE = 16
 
+## **Fusion des lectures Forward et Reverse**
+
 ``` r
-mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs, verbose=TRUE) #fusion des reads F et R là ou ils se chevauchent
+mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs, verbose=TRUE)
 ```
 
     ## 6540 paired-reads (in 107 unique pairings) successfully merged out of 6891 (in 197 pairings) input.
@@ -222,15 +237,18 @@ head(mergers[[1]])
     ## 4       430       4       3    148         0      0      2   TRUE
     ## 5       345       5       6    148         0      0      1   TRUE
     ## 6       282       6       5    148         0      0      2   TRUE
-Les colonnes nmatch, nmismatch et nindel montrent la qualité de la fusion
+
+## **Construction de la table d’ASV**
+
 ``` r
-seqtab <- makeSequenceTable(mergers) #création d'une table de contingence
+seqtab <- makeSequenceTable(mergers)
 dim(seqtab)
 ```
 
     ## [1]  20 293
 
 ``` r
+# Inspect distribution of sequence lengths
 table(nchar(getSequences(seqtab)))
 ```
 
@@ -238,8 +256,10 @@ table(nchar(getSequences(seqtab)))
     ## 251 252 253 254 255 
     ##   1  88 196   6   2
 
+## **Retrait des séquences chimériques**
+
 ``` r
-seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE) #retrait des sequences chimériques
+seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 ```
 
     ## Identified 61 bimeras out of 293 input sequences.
@@ -256,10 +276,12 @@ sum(seqtab.nochim)/sum(seqtab)
 
     ## [1] 0.9640374
 
+## **Suivi des pertes à chaque étape**
+
 ``` r
 getN <- function(x) sum(getUniques(x))
-track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim)) #tableau de suivi du nombre de lectures après chaque étape
-
+track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
+# If processing a single sample, remove the sapply calls: e.g. replace sapply(dadaFs, getN) with getN(dadaFs)
 colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
 rownames(track) <- sample.names
 head(track)
@@ -273,13 +295,16 @@ head(track)
     ## F3D143  3178     2941      2822      2868   2553    2519
     ## F3D144  4827     4312      4151      4228   3646    3507
 
+## **Filtrage des ASV rares**
+
 ``` r
-seqtab.filt <- seqtab.nochim[, colSums(seqtab.nochim) > 1] #retrait des ASV qui n'apparaissent qu'une seule fois
+seqtab.filt <- seqtab.nochim[, colSums(seqtab.nochim) > 1]
 ```
+
+## **Attribution taxonomique**
 
 ``` r
 taxa <- assignTaxonomy(seqtab.nochim, "~/tutoriel_ADM/silva_nr99_v138.2_toGenus_trainset.fa.gz?download=1", multithread=3)
-#chaque ASV est comparé à la base SILVA pour déterminer sa taxonomie
 ```
 
 ``` r
@@ -303,9 +328,11 @@ head(taxa.print)
     ## [5,] "Bacteroides"
     ## [6,] NA
 
+## **Validation avec la communauté Mock**
+
 ``` r
 unqs.mock <- seqtab.nochim["Mock",]
-unqs.mock <- sort(unqs.mock[unqs.mock>0], decreasing=TRUE) #vérifie la justesse du pipeline
+unqs.mock <- sort(unqs.mock[unqs.mock>0], decreasing=TRUE) # Drop ASVs absent in the Mock
 cat("DADA2 inferred", length(unqs.mock), "sample sequences present in the Mock community.\n")
 ```
 
@@ -318,4 +345,3 @@ cat("Of those,", sum(match.ref), "were exact matches to the expected reference s
 ```
 
     ## Of those, 20 were exact matches to the expected reference sequences.
-Le pipeline est bien calibré, pas de séquence erronnée ni de perte d'info
