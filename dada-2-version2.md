@@ -9,10 +9,12 @@ library(dada2)
 
     ## Loading required package: Rcpp
 
+Charge le package DADA2, pour traiter les données 16S.
+
 ## **Définition du chemin et exploration des fichiers**
 
 ``` r
-path <- "~/tutoriel_ADM/MiSeq_SOP" # CHANGE ME to the directory containing the fastq files after unzipping.
+path <- "~/tutoriel_ADM/MiSeq_SOP" 
 list.files(path)
 ```
 
@@ -40,34 +42,43 @@ list.files(path)
     ## [43] "mouse.dpw.metadata"            "mouse.time.design"            
     ## [45] "stability.batch"               "stability.files"
 
+Définit le dossier contenant les fichiers FASTQ et affiche son contenu
+(échantillons, fichiers de référence,…)
+
 ## **Organisation des fichiers forward et reverse**
 
 ``` r
-# Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
 fnFs <- sort(list.files(path, pattern="_R1_001.fastq", full.names = TRUE))
 fnRs <- sort(list.files(path, pattern="_R2_001.fastq", full.names = TRUE))
-# Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
+
 sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
 ```
 
+Récupère les fichiers forward (R1) et reverse (R2), et extrait les noms
+d’échantillons
+
 ## **Vérification de la qualité des lectures**
+
+Affiche les scores de qualité (Q) pour visualiser la dégradation de la
+qualité au long des lectures.
 
 ``` r
 plotQualityProfile(fnFs[1:2])
 ```
 
-![](dada-2-version2_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](dada-2-version2_files/figure-gfm/unnamed-chunk-4-1.png)<!-- --> Les
+lectures ont une bonne qualité jusqu’a environ 240pb.
 
 ``` r
 plotQualityProfile(fnRs[1:2])
 ```
 
-![](dada-2-version2_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+![](dada-2-version2_files/figure-gfm/unnamed-chunk-5-1.png)<!-- --> Les
+lectures ont une bonne qualité jusqu’a environ 160pb.
 
 ## **Filtrage et tronquage des séquences**
 
 ``` r
-# Place filtered files in filtered/ subdirectory
 filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
 filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
 names(filtFs) <- sample.names
@@ -77,7 +88,7 @@ names(filtRs) <- sample.names
 ``` r
 out <- dada2::filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(240,160),
               maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
-              compress=TRUE, multithread=FALSE) # On Windows set multithread=FALSE
+              compress=TRUE, multithread=FALSE) 
 head(out)
 ```
 
@@ -89,7 +100,15 @@ head(out)
     ## F3D143_S209_L001_R1_001.fastq     3178      2941
     ## F3D144_S210_L001_R1_001.fastq     4827      4312
 
+Tronque les reads à la longueur indiquée (240/160pb), élimine les
+séquences de mauvaise qualité, retire les “N” et le contrôle PhiX. Les
+résultats sont stockés dans “filtered”
+
 ## **Apprentissage des modèles d’erreurs**
+
+Calcule la probabilité d’erreurs pour chaque base et chaque score Q afin
+d’alimenter le modèle de débruitage, et de distinguer les erreurs
+aléatoires des vraies différences.
 
 ``` r
 errF <- dada2::learnErrors(filtFs, multithread=TRUE)
@@ -111,6 +130,8 @@ dada2::plotErrors(errF, nominalQ=TRUE)
     ## Transformation introduced infinite values in continuous y-axis
 
 ![](dada-2-version2_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+Compare les taux d’erreurs observés et attendus pour vérifier la
+cohérence du modèle.
 
 ## **Identification des variantes exactes**
 
